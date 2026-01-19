@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Đổi chỗ ngồi – Backtracking</title>
+
+<style>
+body { font-family: Arial; }
+table { border-collapse: collapse; }
+td {
+  border: 1px solid #444;
+  width: 45px;
+  height: 45px;
+  text-align: center;
+}
+input { width: 40px; border: none; text-align: center; }
+.empty { background: #ddd; }
+.red { background: #ffb3b3; }
+button { margin: 10px 0; padding: 8px 15px; }
+pre { background: #f4f4f4; padding: 10px; }
+</style>
+</head>
+
+<body>
+
+<h2>Sơ đồ chỗ ngồi 6×8 (Backtracking)</h2>
+<p>Click ô để chọn <b>ô đỏ</b></p>
+
+<table id="grid"></table>
+<button onclick="solve()">Đổi chỗ</button>
+
+<h3>Kết quả</h3>
+<pre id="result"></pre>
+
+<script>
+const ROWS = 6, COLS = 8;
+
+/* ❌ Hàng 1, cột 1–5 không có chỗ */
+const EMPTY = new Set([
+  "0,0","0,1","0,2","0,3","0,4"
+]);
+
+let redCells = new Set();
+const grid = document.getElementById("grid");
+
+// ===== TẠO BẢNG =====
+for (let r=0;r<ROWS;r++){
+  let tr=document.createElement("tr");
+  for (let c=0;c<COLS;c++){
+    let td=document.createElement("td");
+
+    if (EMPTY.has(`${r},${c}`)){
+      td.classList.add("empty");
+      tr.appendChild(td);
+      continue;
+    }
+
+    let inp=document.createElement("input");
+    inp.id=`${r}-${c}`;
+    td.appendChild(inp);
+
+    td.onclick=()=>{
+      let k=`${r},${c}`;
+      if(redCells.has(k)){
+        redCells.delete(k);
+        td.classList.remove("red");
+      }else{
+        redCells.add(k);
+        td.classList.add("red");
+      }
+    };
+    tr.appendChild(td);
+  }
+  grid.appendChild(tr);
+}
+
+// ===== HÀNG XÓM =====
+function neighbors(r,c){
+  return [[r-1,c],[r+1,c],[r,c-1],[r,c+1]]
+    .filter(p =>
+      p[0]>=0&&p[0]<ROWS&&
+      p[1]>=0&&p[1]<COLS&&
+      !EMPTY.has(`${p[0]},${p[1]}`)
+    );
+}
+
+// ===== GIẢI =====
+function solve(){
+  let old=[], students=[], posOld={};
+
+  for(let r=0;r<ROWS;r++){
+    for(let c=0;c<COLS;c++){
+      if(EMPTY.has(`${r},${c}`)) continue;
+      let v=parseInt(document.getElementById(`${r}-${c}`).value);
+      if(isNaN(v)){ alert("Nhập thiếu số"); return; }
+      students.push(v);
+      posOld[v]=[r,c];
+    }
+  }
+
+  let seats=[];
+  for(let r=0;r<ROWS;r++)
+    for(let c=0;c<COLS;c++)
+      if(!EMPTY.has(`${r},${c}`))
+        seats.push([r,c]);
+
+  let assign={}, usedSeat=new Set();
+
+  function ok(student, seat){
+    let [r,c]=seat;
+    let [or,oc]=posOld[student];
+
+    // không ngồi lại bàn cũ
+    if(r===or && c===oc) return false;
+
+    // ô đỏ chỉ đổi trong hàng
+    if(redCells.has(`${or},${oc}`) && r!==or) return false;
+
+    // không ngồi gần người cũ
+    for(let [nr,nc] of neighbors(r,c)){
+      let other = Object.keys(assign).find(
+        s => assign[s][0]===nr && assign[s][1]===nc
+      );
+      if(other){
+        let [oor,ooc]=posOld[other];
+        for(let [ar,ac] of neighbors(or,oc)){
+          if(ar===oor && ac===ooc) return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  function backtrack(i){
+    if(i===students.length) return true;
+    let s=students[i];
+
+    for(let seat of seats){
+      let key=seat.join(",");
+      if(usedSeat.has(key)) continue;
+      if(!ok(s,seat)) continue;
+
+      assign[s]=seat;
+      usedSeat.add(key);
+
+      if(backtrack(i+1)) return true;
+
+      delete assign[s];
+      usedSeat.delete(key);
+    }
+    return false;
+  }
+
+  if(!backtrack(0)){
+    document.getElementById("result").textContent =
+      "❌ KẾT LUẬN: KHÔNG TỒN TẠI SƠ ĐỒ HỢP LỆ";
+    return;
+  }
+
+  let result = Array.from({length:ROWS},()=>Array(COLS).fill("--"));
+  for(let s in assign){
+    let [r,c]=assign[s];
+    result[r][c]=s;
+  }
+
+  document.getElementById("result").textContent =
+    result.map(r=>r.join(" ")).join("\n");
+}
+</script>
+
+</body>
+</html>
